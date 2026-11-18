@@ -63,3 +63,7 @@ a.card-row, .card-row a { color: inherit; }
 /* centre the whole app on very wide windows */
 body { background: var(--bg-hover); }
 #app { max-width: 1560px; margin: 0 auto; background: var(--bg); box-shadow: 0 0 0 1px var(--border), 0 0 40px rgba(20, 30, 50, .06); }
+
+/* Import dialog */
+.dropzone { border: 2px dashed var(--border, #c9cfd8); border-radius: 10px; padding: 22px 16px; text-align: center; margin: 10px 0 12px; color: var(--muted, #6b7280); transition: background .12s, border-color .12s; }
+.dropzone.over { border-color: var(--accent, #2f6fe4); background: color-mix(in srgb, var(--accent, #2f6fe4) 8%, transparent); }

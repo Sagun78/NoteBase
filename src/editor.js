@@ -205,6 +205,33 @@ function looksLikeMarkdown(text) {
   return MD_SIGNALS.some((re) => re.test(text));
 }
 
+/* The document schema, shared by the live editor and the headless importer. */
+function coreExtensions(resolveImage) {
+  return [
+    StarterKit.configure({ codeBlock: false, paragraph: false, heading: false, link: { openOnClick: false, autolink: true } }),
+    AlignedParagraph, AlignedHeading,
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    StyledText, Color, BackgroundColor, FontFamily, FontSize, LineHeight, Sub, Sup,
+    Markdown,
+    CodeBlock.configure({ lowlight }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    Table.configure({ resizable: false }),
+    TableRow, TableHeader, TableCell,
+    LocalImage.configure({ resolve: resolveImage }),
+    ColorHighlight,
+    Callout, SearchReplace, Mermaid, MathBlock, Embed, Column, Columns,
+  ];
+}
+
+/** Convert an HTML string to the Markdown NoteBase stores, using the real editor schema (used by the importers). */
+export function htmlToMarkdown(html) {
+  const ed = new Editor({ element: document.createElement('div'), editable: false, content: html, contentType: 'html', extensions: coreExtensions(async () => 'data:,') });
+  const prev = EXTS;
+  EXTS = ed.extensionManager.extensions; // aligned blocks serialise via generateHTML, which needs the schema
+  try { return ed.getMarkdown(); } finally { EXTS = prev.length ? prev : EXTS; ed.destroy(); }
+}
+
 /* ---------- editor factory ---------- */
 export function createEditor({ element, content = '', editable = true, resolveImage, onUpdate, onPickImage, onImageFiles, onFiles, onPickFile, onOpenAsset, searchPages, onNavigate }) {
   const ed = new Editor({
@@ -213,20 +240,8 @@ export function createEditor({ element, content = '', editable = true, resolveIm
     content,
     contentType: 'markdown',
     extensions: [
-      StarterKit.configure({ codeBlock: false, paragraph: false, heading: false, link: { openOnClick: false, autolink: true } }),
-      AlignedParagraph, AlignedHeading,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      StyledText, Color, BackgroundColor, FontFamily, FontSize, LineHeight, Sub, Sup,
-      Markdown,
-      CodeBlock.configure({ lowlight }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: false }),
-      TableRow, TableHeader, TableCell,
-      LocalImage.configure({ resolve: resolveImage }),
-      ColorHighlight,
+      ...coreExtensions(resolveImage),
       Placeholder.configure({ placeholder: ({ node }) => (node.type.name === 'paragraph' ? "Type '/' for commands…" : '') }),
-      Callout, SearchReplace, Mermaid, MathBlock, Embed, Column, Columns,
       ...(editable ? [slashExtension(), pageLinkExtension(), emojiExtension()] : []),
     ],
     editorProps: {
