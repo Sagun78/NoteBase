@@ -1,4 +1,6 @@
-# NoteBase
+<p align="center"><img src="public/icon-512.png" alt="NoteBase icon" width="120"></p>
+
+<h1 align="center">NoteBase</h1>
 
 A private, Outline-style knowledge base. Your pages are plain Markdown files in a folder you choose (local or a network share).
 
