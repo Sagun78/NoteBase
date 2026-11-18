@@ -19,6 +19,7 @@ import { PluginKey } from '@tiptap/pm/state';
 import { Callout, SearchReplace } from './extras.js';
 import { Mermaid, MathBlock, Embed, Column, Columns, embedSrc } from './extras2.js';
 import { searchEmoji } from './emoji.js';
+import { isScript } from './importers.js';
 
 
 /* Formatting that plain Markdown can't express (colour, alignment, size, sub/superscript)
@@ -72,6 +73,7 @@ const COMMANDS = [
   { title: 'Checklist', hint: 'Track tasks with checkboxes', keys: 'todo task check', run: (e, r) => e.chain().focus().deleteRange(r).toggleTaskList().run() },
   { title: 'Quote', hint: 'Call out a quotation', keys: 'blockquote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
   { title: 'Code block', hint: 'Code with syntax highlighting', keys: 'code pre', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
+  { title: 'Import script', hint: 'Insert a script file as a code block', keys: 'script code import file', run: (e, r) => { e.chain().focus().deleteRange(r).run(); e.options.onPickScript?.(); } },
   { title: 'Table', hint: '3 × 3 table', keys: 'grid', run: (e, r) => e.chain().focus().deleteRange(r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
   { title: 'Info callout', hint: 'Highlighted note', keys: 'note callout notice info', run: (e, r) => callout(e, r, 'info') },
   { title: 'Warning callout', hint: 'Draw attention to a risk', keys: 'callout warn caution', run: (e, r) => callout(e, r, 'warning') },
@@ -233,7 +235,7 @@ export function htmlToMarkdown(html) {
 }
 
 /* ---------- editor factory ---------- */
-export function createEditor({ element, content = '', editable = true, resolveImage, onUpdate, onPickImage, onImageFiles, onFiles, onPickFile, onOpenAsset, searchPages, onNavigate }) {
+export function createEditor({ element, content = '', editable = true, resolveImage, onUpdate, onPickImage, onImageFiles, onFiles, onPickFile, onScriptFiles, onPickScript, onOpenAsset, searchPages, onNavigate }) {
   const ed = new Editor({
     element,
     editable,
@@ -249,7 +251,7 @@ export function createEditor({ element, content = '', editable = true, resolveIm
       handlePaste: (view, ev) => {
         const text = ev.clipboardData?.getData('text/plain')?.trim() || '';
         const { $from } = view.state.selection;
-        if (editable && text && !/\s/.test(text) && embedSrc(text) && $from.parent.type.name === 'paragraph' && !$from.parent.textContent) {
+        if (ed.isEditable && text && !/\s/.test(text) && embedSrc(text) && $from.parent.type.name === 'paragraph' && !$from.parent.textContent) {
           ed.chain().focus().insertContent({ type: 'embed', attrs: { url: text } }).run();
           return true;
         }
@@ -257,7 +259,7 @@ export function createEditor({ element, content = '', editable = true, resolveIm
         // Ctrl+Shift+V (view.input.shiftKey) keeps it as plain text; code blocks are left alone.
         const html = ev.clipboardData?.getData('text/html') || '';
         const plainish = !html || isStylingOnly(html);
-        if (editable && !window.__plainPaste && looksLikeMarkdown(text) && plainish
+        if (ed.isEditable && !window.__plainPaste && looksLikeMarkdown(text) && plainish
           && !view.input?.shiftKey && $from.parent.type.name !== 'codeBlock') {
           ed.chain().focus().insertContent(text, { contentType: 'markdown' }).run();
           return true;
@@ -266,17 +268,27 @@ export function createEditor({ element, content = '', editable = true, resolveIm
         const imgs = all.filter((f) => f.type.startsWith('image/'));
         if (imgs.length && onImageFiles) { onImageFiles(imgs); return true; }
         const others = all.filter((f) => !f.type.startsWith('image/'));
-        if (others.length && onFiles && !ev.clipboardData.getData('text/html')) { onFiles(others); return true; }
+        if (others.length && !ev.clipboardData.getData('text/html')) {
+          const scripts = onScriptFiles ? others.filter((f) => isScript(f.name)) : [];
+          const rest = others.filter((f) => !scripts.includes(f));
+          if (scripts.length) onScriptFiles(scripts);
+          if (rest.length && onFiles) onFiles(rest);
+          if (scripts.length || (rest.length && onFiles)) return true;
+        }
         return false;
       },
       handleDrop: (_v, ev) => {
+        if (!ed.isEditable) return false;
         const all = [...(ev.dataTransfer?.files || [])];
         if (!all.length) return false;
         ev.preventDefault();
         const imgs = all.filter((f) => f.type.startsWith('image/'));
         if (imgs.length && onImageFiles) onImageFiles(imgs);
         const others = all.filter((f) => !f.type.startsWith('image/'));
-        if (others.length && onFiles) onFiles(others);
+        const scripts = onScriptFiles ? others.filter((f) => isScript(f.name)) : [];
+        const rest = others.filter((f) => !scripts.includes(f));
+        if (scripts.length) onScriptFiles(scripts);
+        if (rest.length && onFiles) onFiles(rest);
         return true;
       },
       handleClick: (_v, _pos, ev) => {
@@ -292,6 +304,7 @@ export function createEditor({ element, content = '', editable = true, resolveIm
   });
   ed.options.onPickImage = onPickImage;
   ed.options.onPickFile = onPickFile;
+  ed.options.onPickScript = onPickScript;
   ed.options.searchPages = searchPages;
   EXTS = ed.extensionManager.extensions;
   return ed;

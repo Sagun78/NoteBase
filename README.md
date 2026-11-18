@@ -42,7 +42,7 @@ NoteBase is modelled on **[Outline](https://github.com/outline/outline)**, the o
 - **Images and files.** Paste, drop or insert; resize, align and caption; view full-screen.
 - **Paste smartly.** Pasted Markdown becomes real formatting; pasted rich text keeps its colours, alignment and fonts.
 - **Right-click menus** for text, links, images, tables and code, plus spelling suggestions in the desktop app.
-- **Import and export.** Import Word (`.docx`), PDF, Markdown, HTML, MHTML, email (`.eml`), CSV/TSV, plain text and TextPack, as several files at once or a whole folder (sub-folders become nested pages). Headings, lists, tables, links, bold/italic/underline and embedded images are kept; unreadable files are listed with the reason. Export as Markdown files or folders.
+- **Import and export.** Import Word (`.docx`), PDF, Markdown, HTML, MHTML, email (`.eml`), CSV/TSV, plain text, TextPack and scripts/code (`.py`, `.js`, `.ts`, `.ps1`, `.sh`, `.bat`, `.sql`, etc.), as several files at once or a whole folder (sub-folders become nested pages). Headings, lists, tables, links, bold/italic/underline and embedded images are kept; scripts are placed in syntax-highlighted code blocks with filename titles and line numbers; unreadable files are listed with the reason. Export as Markdown files or folders.
 
 ## Build the installers yourself
 

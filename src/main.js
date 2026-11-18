@@ -17,7 +17,7 @@ import { createEditor, setMarkdown, attachBubble, attachImageToolbar } from './e
 import { mountToolbar } from './toolbar.js';
 import { prefs, applyPrefs } from './prefs.js';
 import { openSettings } from './settings.js';
-import { FORMATS } from './importers.js';
+import { FORMATS, ACCEPT, SCRIPT_ACCEPT, readScriptFile } from './importers.js';
 import { NodeSelection } from '@tiptap/pm/state';
 import { CellSelection } from '@tiptap/pm/tables';
 import { imageActions, selectedImage } from './image.js';
@@ -427,9 +427,9 @@ async function exportFlow(ids) {
   } catch (e) { if (e.name !== 'AbortError') toast('Export failed: ' + e.message); }
 }
 async function importFlow(colId, droppedFiles) {
-  const fmts = FORMATS.map((f) => `<li><b>${esc(f.name)}</b> <span class="muted">${f.ext.map((e) => '.' + e).join(' ')}</span></li>`).join('');
-  const m = modal(`<h3>Import documents</h3>
-    <p class="muted">Bring in Word, PDF, Markdown, HTML and more. Formatting, tables, links and images are kept where possible. Folders become nested pages.</p>
+  const fmts = FORMATS.map((f) => `<li><b>${esc(f.name)}</b> <span class="muted">${f.ext.map((e) => '.' + e).join(' ')}${f.note ? ` (${esc(f.note)})` : ''}</span></li>`).join('');
+  const m = modal(`<h3>Import documents &amp; scripts</h3>
+    <p class="muted">Bring in Word, PDF, Markdown, HTML, scripts and more. Formatting, tables, links and images are kept where possible; scripts are imported in syntax-highlighted code blocks. Folders become nested pages.</p>
     <div class="dropzone" id="impDrop" tabindex="0">Drop files here, or choose them below</div>
     <div class="row"><button class="btn primary" data-a="files">Choose files…</button><button class="btn" data-a="dir">Choose a folder…</button></div>
     <details class="muted" style="margin-top:10px"><summary>Supported formats</summary><ul style="margin:6px 0 0 18px;padding:0">${fmts}</ul></details>`);
@@ -449,7 +449,7 @@ async function importFlow(colId, droppedFiles) {
         }
         res = await store.importTree(src, target, onProgress);
       } else {
-        if (!files) files = await new Promise((res2) => { const i = $('#mdInput'); i.value = ''; i.onchange = () => res2([...i.files]); i.oncancel = () => res2([]); i.click(); });
+        if (!files) files = await new Promise((res2) => { const i = $('#mdInput'); i.accept = ACCEPT; i.value = ''; i.onchange = () => res2([...i.files]); i.oncancel = () => res2([]); i.click(); });
         if (!files.length) { hideProgress(); return; }
         res = await store.importFiles(files, target, onProgress);
       }
@@ -585,6 +585,8 @@ function showPage(p) {
     onImageFiles: insertImages,
     onFiles: insertFiles,
     onPickFile: () => { const i = $('#fileInput'); i.value = ''; i.onchange = () => insertFiles([...i.files]); i.click(); },
+    onScriptFiles: insertScripts,
+    onPickScript: () => { const i = $('#scriptInput'); i.accept = SCRIPT_ACCEPT; i.value = ''; i.onchange = () => insertScripts([...i.files]); i.click(); },
     onOpenAsset: openAsset,
     onNavigate: (href) => { location.hash = href; },
     searchPages: (q) => (q ? searchPages(q).map((r) => r.p) : live().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))).filter((x) => x.id !== p.id).slice(0, 8).map((x) => ({ id: x.id, title: titleOf(x), hint: (x.icon ? x.icon + ' ' : '') + (colOf(x.collectionId)?.name || '') })),
@@ -977,6 +979,26 @@ async function insertFiles(files) {
     } catch (e) { toast('Attachment failed: ' + e.message); }
   }
 }
+async function insertScripts(files) {
+  const nodes = [];
+  for (const f of files) {
+    try {
+      const r = await readScriptFile(f);
+      nodes.push({
+        type: 'codeBlock',
+        attrs: { language: r.language || null, title: r.title, lineNumbers: true },
+        content: r.code ? [{ type: 'text', text: r.code }] : [],
+      });
+    } catch (e) { toast(`${f.name}: ${e.message}`); }
+  }
+  if (!nodes.length || !editor) return;
+  const { $from } = editor.state.selection;
+  if ($from.parent.type.name === 'codeBlock') {
+    editor.chain().focus().insertContentAt($from.after(), nodes).run();
+  } else {
+    editor.chain().focus().insertContent(nodes).run();
+  }
+}
 async function openAsset(href) {
   const url = await store.assetUrl(href);
   if (!url) return toast('File not found in assets/');
@@ -1199,7 +1221,7 @@ function onEditorContext(ev) {
 
     if (editing && !hasSel) {
       section([{ label: 'Insert', submenu: [
-        mk('Image…', () => ed.options.onPickImage?.()), mk('File…', () => ed.options.onPickFile?.()),
+        mk('Image…', () => ed.options.onPickImage?.()), mk('File…', () => ed.options.onPickFile?.()), mk('Import script…', () => ed.options.onPickScript?.()),
         mk('Table', () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()), mk('Code block', () => chain().toggleCodeBlock().run()),
         mk('Info callout', () => chain().insertContent({ type: 'callout', attrs: { type: 'info' }, content: [{ type: 'paragraph' }] }).run()),
         mk('Warning callout', () => chain().insertContent({ type: 'callout', attrs: { type: 'warning' }, content: [{ type: 'paragraph' }] }).run()),

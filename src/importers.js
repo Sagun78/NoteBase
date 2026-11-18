@@ -10,12 +10,70 @@
      .csv .tsv             -> Markdown table
      .textpack .textbundle -> zip (info.json + text.* + assets/) -> Markdown
      .md .markdown .txt    -> as is (front matter stripped)
+     scripts / code        -> fenced code block with language, filename title and line numbers
 
    Images embedded in a document (docx, mhtml, eml, textpack, data: URIs) are written to assets/ via `ctx.saveAsset`. */
 import { htmlToMarkdown } from './editor.js';
 import { pdfToMarkdown } from './pdfconvert.js';
 
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
+export const MAX_SCRIPT_BYTES = 5 * 1024 * 1024;
+
+const SCRIPT_EXT_LANG = {
+  // Shell & automation
+  sh: 'bash', bash: 'bash', zsh: 'bash', ksh: 'bash', fish: 'bash', command: 'bash',
+  ps1: 'powershell', psm1: 'powershell', psd1: 'powershell',
+  bat: 'dos', cmd: 'dos',
+  vbs: 'vbscript', vbe: 'vbscript',
+  awk: 'awk',
+  // Scripting languages
+  py: 'python', pyw: 'python', pyi: 'python',
+  js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript',
+  ts: 'typescript', mts: 'typescript', cts: 'typescript', tsx: 'typescript',
+  rb: 'ruby', rake: 'ruby',
+  php: 'php',
+  pl: 'perl', pm: 'perl',
+  lua: 'lua',
+  r: 'r',
+  sql: 'sql',
+  groovy: 'groovy', gradle: 'groovy',
+  // Compiled / app languages
+  c: 'c', h: 'c',
+  cpp: 'cpp', cc: 'cpp', cxx: 'cpp', hpp: 'cpp', hh: 'cpp',
+  cs: 'csharp',
+  java: 'java',
+  go: 'go',
+  rs: 'rust',
+  kt: 'kotlin', kts: 'kotlin',
+  swift: 'swift',
+  dart: 'dart',
+  scala: 'scala',
+  // Config, styles & markup
+  json: 'json', jsonc: 'json',
+  yaml: 'yaml', yml: 'yaml',
+  toml: 'ini', ini: 'ini', cfg: 'ini', conf: 'ini', env: 'ini', properties: 'ini',
+  xml: 'xml', xhtml: 'xml', plist: 'xml', xsd: 'xml', xsl: 'xml', xslt: 'xml',
+  css: 'css', scss: 'scss', sass: 'scss', less: 'less',
+  graphql: 'graphql', gql: 'graphql',
+  diff: 'diff', patch: 'diff',
+  dockerfile: 'dockerfile',
+  nginx: 'nginx',
+  cmake: 'cmake',
+  makefile: 'makefile', mk: 'makefile',
+};
+
+const SCRIPT_NAME_LANG = {
+  dockerfile: 'dockerfile',
+  makefile: 'makefile',
+  gnumakefile: 'makefile',
+  justfile: 'makefile',
+  'cmakelists.txt': 'cmake',
+  rakefile: 'ruby',
+  gemfile: 'ruby',
+  vagrantfile: 'ruby',
+  jenkinsfile: 'groovy',
+  procfile: 'yaml',
+};
 
 export const FORMATS = [
   { name: 'Markdown', ext: ['md', 'markdown'] },
@@ -26,11 +84,23 @@ export const FORMATS = [
   { name: 'CSV / TSV', ext: ['csv', 'tsv'] },
   { name: 'Email', ext: ['eml'] },
   { name: 'TextPack', ext: ['textpack', 'textbundle'] },
+  {
+    name: 'Scripts',
+    ext: ['sh', 'bash', 'zsh', 'ksh', 'fish', 'command', 'ps1', 'psm1', 'psd1', 'bat', 'cmd', 'vbs', 'vbe', 'awk', 'py', 'pyw', 'pyi', 'js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx', 'rb', 'rake', 'php', 'pl', 'pm', 'lua', 'r', 'sql', 'groovy', 'gradle'],
+    note: 'also Dockerfile, Makefile, Rakefile, Jenkinsfile',
+  },
+  {
+    name: 'Code & config',
+    ext: ['c', 'h', 'cpp', 'cc', 'cxx', 'hpp', 'hh', 'cs', 'java', 'go', 'rs', 'kt', 'kts', 'swift', 'dart', 'scala', 'json', 'jsonc', 'yaml', 'yml', 'toml', 'ini', 'cfg', 'conf', 'env', 'properties', 'xml', 'xhtml', 'plist', 'xsd', 'xsl', 'xslt', 'css', 'scss', 'sass', 'less', 'graphql', 'gql', 'diff', 'patch', 'dockerfile', 'nginx', 'cmake', 'makefile', 'mk'],
+  },
 ];
 export const SUPPORTED = new Set(FORMATS.flatMap((f) => f.ext));
 export const ACCEPT = [...SUPPORTED].map((e) => '.' + e).join(',');
+export const SCRIPT_ACCEPT = Object.keys(SCRIPT_EXT_LANG).map((e) => '.' + e).join(',');
+export const baseNameOf = (name) => String(name).split(/[/\\]/).pop().toLowerCase();
 export const extOf = (name) => (String(name).match(/\.([^./\\]+)$/)?.[1] || '').toLowerCase();
-export const isSupported = (name) => SUPPORTED.has(extOf(name));
+export const isScript = (name) => Boolean(SCRIPT_NAME_LANG[baseNameOf(name)] || SCRIPT_EXT_LANG[extOf(name)]);
+export const isSupported = (name) => SUPPORTED.has(extOf(name)) || Boolean(SCRIPT_NAME_LANG[baseNameOf(name)]);
 export const stripExt = (name) => String(name).replace(/\.[^./\\]+$/, '');
 
 export class ImportError extends Error {}
@@ -311,6 +381,66 @@ async function importText(file) {
   return { title: '', body: text.trim() ? text : '' };
 }
 
+/* ---------- Scripts & code ---------- */
+function detectShebangLang(code) {
+  const first = String(code || '').split('\n', 1)[0];
+  if (!first.startsWith('#!')) return '';
+  const line = first.toLowerCase();
+  if (/\bpython\d*(?:\.\d+)?\b/.test(line)) return 'python';
+  if (/\b(?:pwsh|powershell)\b/.test(line)) return 'powershell';
+  if (/\b(?:bash|sh|zsh|dash|ash|ksh|fish)\b/.test(line)) return 'bash';
+  if (/\b(?:node|nodejs|deno|bun)\b/.test(line)) return 'javascript';
+  if (/\b(?:ts-node|tsx)\b/.test(line)) return 'typescript';
+  if (/\bruby\b/.test(line)) return 'ruby';
+  if (/\bperl\b/.test(line)) return 'perl';
+  if (/\bphp\b/.test(line)) return 'php';
+  if (/\blua\b/.test(line)) return 'lua';
+  if (/\b[gm]?awk\b/.test(line)) return 'awk';
+  if (/\brscript\b/.test(line)) return 'r';
+  return '';
+}
+
+export function detectScriptLang(filename, code = '') {
+  const base = baseNameOf(filename);
+  if (SCRIPT_NAME_LANG[base]) return SCRIPT_NAME_LANG[base];
+  const ext = extOf(filename);
+  const extLang = SCRIPT_EXT_LANG[ext] || '';
+  if (!extLang || ext === 'sh' || ext === 'command') {
+    const sb = detectShebangLang(code);
+    if (sb) return sb;
+  }
+  return extLang;
+}
+
+export function formatCodeBlock(code, { language = '', title = '', lineNumbers = true, wrap = false, collapsed = false } = {}) {
+  const body = String(code ?? '').replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+  let fence = '```';
+  while (body.includes(fence)) fence += '`';
+  const meta = [];
+  if (title) meta.push(`title="${String(title).replace(/(["\\])/g, '\\$1')}"`);
+  if (lineNumbers) meta.push('lines');
+  if (wrap) meta.push('wrap');
+  if (collapsed) meta.push('collapsed');
+  return `${fence}${language || ''}${meta.length ? ` {${meta.join(' ')}}` : ''}\n${body}\n${fence}`;
+}
+
+export async function readScriptFile(file) {
+  if (file.size === 0) throw new ImportError('The file is empty.');
+  if (file.size > MAX_SCRIPT_BYTES) throw new ImportError('The script file is too large to import (over 5 MB).');
+  const raw = await textOf(file);
+  if (/\u0000/.test(raw)) throw new ImportError('This file appears to be binary, not a text script.');
+  const code = raw.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+  if (!code.trim()) throw new ImportError('The file is empty.');
+  const title = String(file.name || 'script').split(/[/\\]/).pop();
+  const language = detectScriptLang(title, code);
+  return { title, language, code };
+}
+
+async function importScript(file) {
+  const { title, language, code } = await readScriptFile(file);
+  return { title, body: formatCodeBlock(code, { language, title, lineNumbers: true }) };
+}
+
 /* ---------- PDF ---------- */
 let pdfjsP;
 async function pdfjs() {
@@ -338,20 +468,25 @@ async function importPdf(file) {
  */
 export async function convertFile(file, ctx) {
   const ext = extOf(file.name);
-  if (!SUPPORTED.has(ext)) throw new ImportError(`“.${ext || 'unknown'}” files are not supported.`);
+  if (!isSupported(file.name)) throw new ImportError(`“.${ext || 'unknown'}” files are not supported.`);
   if (file.size > MAX_FILE_BYTES) throw new ImportError('The file is too large to import (over 100 MB).');
   if (file.size === 0) throw new ImportError('The file is empty.');
   let r;
-  switch (ext) {
-    case 'md': case 'markdown': r = await importMarkdown(file, ctx); break;
-    case 'txt': r = await importText(file); break;
-    case 'html': case 'htm': r = await importHtml(file, ctx); break;
-    case 'docx': r = await importDocx(file, ctx); break;
-    case 'pdf': r = await importPdf(file, ctx); break;
-    case 'csv': case 'tsv': r = await importCsv(file); break;
-    case 'eml': r = await importMime(file, ctx, 'email'); break;
-    case 'mhtml': case 'mht': r = await importMime(file, ctx, 'web page'); break;
-    case 'textpack': case 'textbundle': r = await importTextPack(file, ctx); break;
+  if (SCRIPT_NAME_LANG[baseNameOf(file.name)]) {
+    r = await importScript(file);
+  } else {
+    switch (ext) {
+      case 'md': case 'markdown': r = await importMarkdown(file, ctx); break;
+      case 'txt': r = await importText(file); break;
+      case 'html': case 'htm': r = await importHtml(file, ctx); break;
+      case 'docx': r = await importDocx(file, ctx); break;
+      case 'pdf': r = await importPdf(file, ctx); break;
+      case 'csv': case 'tsv': r = await importCsv(file); break;
+      case 'eml': r = await importMime(file, ctx, 'email'); break;
+      case 'mhtml': case 'mht': r = await importMime(file, ctx, 'web page'); break;
+      case 'textpack': case 'textbundle': r = await importTextPack(file, ctx); break;
+      default: r = await importScript(file); break;
+    }
   }
   const split = splitLeadingEmoji((r.title || '').trim() || stripExt(file.name));
   return { title: split.title.slice(0, 100), icon: split.icon, body: (r.body || '').trim() };

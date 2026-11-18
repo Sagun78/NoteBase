@@ -3,9 +3,16 @@ import { common, createLowlight } from 'lowlight';
 import powershell from 'highlight.js/lib/languages/powershell';
 import dockerfile from 'highlight.js/lib/languages/dockerfile';
 import nginx from 'highlight.js/lib/languages/nginx';
+import dos from 'highlight.js/lib/languages/dos';
+import vbscript from 'highlight.js/lib/languages/vbscript';
+import awk from 'highlight.js/lib/languages/awk';
+import groovy from 'highlight.js/lib/languages/groovy';
+import dart from 'highlight.js/lib/languages/dart';
+import scala from 'highlight.js/lib/languages/scala';
+import cmake from 'highlight.js/lib/languages/cmake';
 
 export const lowlight = createLowlight(common);
-lowlight.register({ powershell, dockerfile, nginx });
+lowlight.register({ powershell, dockerfile, nginx, dos, vbscript, awk, groovy, dart, scala, cmake });
 
 /* Code snippet block, modelled on Confluence's Code Snippet macro:
    language picker, optional title, line numbers, word wrap, collapse and copy.
@@ -13,14 +20,17 @@ lowlight.register({ powershell, dockerfile, nginx });
 export const CODE_LANGS = [
   ['', 'Auto-detect'], ['plaintext', 'Plain text'], ['javascript', 'JavaScript'], ['typescript', 'TypeScript'], ['python', 'Python'], ['java', 'Java'],
   ['csharp', 'C#'], ['cpp', 'C++'], ['c', 'C'], ['go', 'Go'], ['rust', 'Rust'], ['php', 'PHP'], ['ruby', 'Ruby'], ['swift', 'Swift'], ['kotlin', 'Kotlin'],
-  ['sql', 'SQL'], ['bash', 'Bash'], ['powershell', 'PowerShell'], ['json', 'JSON'], ['yaml', 'YAML'], ['xml', 'HTML / XML'], ['css', 'CSS'], ['scss', 'SCSS'],
-  ['markdown', 'Markdown'], ['diff', 'Diff'], ['dockerfile', 'Dockerfile'], ['nginx', 'Nginx'], ['ini', 'INI / TOML'], ['graphql', 'GraphQL'], ['lua', 'Lua'], ['r', 'R'],
+  ['dart', 'Dart'], ['scala', 'Scala'], ['perl', 'Perl'], ['groovy', 'Groovy'],
+  ['sql', 'SQL'], ['bash', 'Bash'], ['powershell', 'PowerShell'], ['dos', 'Batch'], ['vbscript', 'VBScript'], ['awk', 'AWK'],
+  ['json', 'JSON'], ['yaml', 'YAML'], ['xml', 'HTML / XML'], ['css', 'CSS'], ['scss', 'SCSS'], ['less', 'Less'],
+  ['markdown', 'Markdown'], ['diff', 'Diff'], ['dockerfile', 'Dockerfile'], ['makefile', 'Makefile'], ['cmake', 'CMake'], ['nginx', 'Nginx'],
+  ['ini', 'INI / TOML'], ['graphql', 'GraphQL'], ['lua', 'Lua'], ['r', 'R'],
 ];
 
 const flag = (name) => ({ default: false, rendered: false, parseHTML: (el) => el.hasAttribute(`data-${name}`) });
 
 export function parseInfo(info) {
-  const m = /^(\S*)\s*(?:\{([^}]*)\})?\s*$/.exec((info || '').trim());
+  const m = /^(?:([^\s{]\S*)\s*)?(?:\{(.*)\})?\s*$/.exec((info || '').trim());
   const language = (m && m[1]) || null;
   const meta = (m && m[2]) || '';
   const t = /title="((?:[^"\\]|\\.)*)"/.exec(meta);

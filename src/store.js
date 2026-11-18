@@ -494,8 +494,10 @@ export async function importTree(src, collectionId, onProgress) {
     const files = [], dirs = [];
     for await (const [name, h] of dir.entries()) {
       if (name.startsWith('.') || name.startsWith('~$')) continue;
-      if (h.kind === 'directory') dirs.push([name, h]);
-      else if (isSupported(name)) files.push([name, h]);
+      if (h.kind === 'directory') {
+        if (name === 'node_modules' || name === '__pycache__') continue;
+        dirs.push([name, h]);
+      } else if (isSupported(name)) files.push([name, h]);
       else if (!IGNORED_ASSET.test(name)) result.skipped.push(prefix + name);
     }
     files.sort((a, b) => a[0].localeCompare(b[0]));
@@ -536,7 +538,7 @@ export async function importFiles(files, collectionId, onProgress) {
   }
   return result;
 }
-const IGNORED_ASSET = /.(png|jpe?g|gif|webp|svg|bmp|ico|json|ds_store|css|js)$/i;
+const IGNORED_ASSET = /\.(png|jpe?g|gif|webp|svg|bmp|ico|ds_store)$/i;
 export async function backupZip() {
   const { zipSync, strToU8 } = await import('fflate');
   const files = {};

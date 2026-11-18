@@ -72,7 +72,7 @@ export function openSettings(api, start = 'workspace') {
         + group([
           row('Full backup', 'One .zip with every page, version and file.', '<button class="btn primary" data-act="backup">Download .zip</button>'),
           row('Export as Markdown tree', 'Collections become folders, nested pages become sub-folders.', '<button class="btn" data-act="export">Export…</button>'),
-          row('Import documents', 'Bring in Word, PDF, Markdown, HTML, CSV and more, as files or a whole folder.', '<button class="btn" data-act="import">Import…</button>'),
+          row('Import documents', 'Bring in Word, PDF, Markdown, HTML, CSV, scripts and more, as files or a whole folder.', '<button class="btn" data-act="import">Import…</button>'),
         ]);
     },
     async shortcuts() {
