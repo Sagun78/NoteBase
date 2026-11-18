@@ -1,0 +1,10 @@
+# Normalise line endings: LF in the repo, native on checkout
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# binary assets
+*.png binary
+*.ico binary
+*.webp binary
+*.woff2 binary

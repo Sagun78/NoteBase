@@ -1,0 +1,52 @@
+/* ---------- Code snippet block ---------- */
+.codeblock { position: relative; margin: 1em 0; border: 1px solid var(--border); border-radius: 10px; background: var(--code-bg); overflow: clip; }
+.codeblock pre { margin: 0; border-radius: 0; background: transparent; padding: 12px 16px 14px; overflow-x: auto; }
+.codeblock pre code { white-space: pre; }
+.codeblock.wrap pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.codeblock.lines pre { padding-left: 62px; }
+.codegutter { display: none; position: absolute; left: 0; top: 33px; bottom: 0; width: 46px; padding: 12px 10px 14px 0; text-align: right; white-space: pre; font: 13.5px/1.65 var(--mono); letter-spacing: 0; color: var(--text-3); background: color-mix(in srgb, var(--code-bg) 60%, var(--border)); border-right: 1px solid var(--border); user-select: none; overflow: hidden; }
+.codeblock.lines .codegutter { display: block; }
+.codeblock.collapsed { height: auto; }
+.codeblock.collapsed pre, .codeblock.collapsed .codegutter { display: none; }
+.codeblock.collapsed .codebar { border-bottom: 0; }
+
+.codebar { position: sticky; top: 0; height: 33px; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 6px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--code-bg) 55%, var(--bg)); user-select: none; z-index: 3; }
+.cb-spacer { flex: 1; }
+.cb-btn { height: 24px; min-width: 24px; padding: 0 8px; border-radius: 6px; font: 500 12px var(--font); color: var(--text-2); transition: background .12s, color .12s, opacity .12s; }
+.cb-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+.cb-btn:disabled { opacity: .4; cursor: not-allowed; }
+.cb-btn.on { background: var(--bg-active); color: var(--accent); }
+.cb-chev { padding: 0; width: 24px; font-size: 13px; }
+.codelabel { font: 600 11.5px var(--font); letter-spacing: .04em; text-transform: uppercase; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; cursor: default; }
+.codelabel.is-title { text-transform: none; letter-spacing: -.005em; font-size: 13px; font-weight: 600; color: var(--text); }
+.codetitle { display: none; flex: 0 1 220px; min-width: 0; height: 24px; border: 1px solid transparent; border-radius: 6px; background: transparent; font: 600 13px var(--font); color: var(--text); padding: 0 6px; outline: none; }
+.codetitle:hover { background: var(--bg-hover); }
+.codetitle:focus { border-color: var(--accent); background: var(--bg); }
+.codelang { display: none; height: 24px; font: 500 12px var(--font); border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); padding: 0 4px; cursor: pointer; }
+.cb-tool { display: none; }
+.codeblock.ed .codelang { display: inline-block; }
+.codeblock.ed .cb-tool { display: inline-block; }
+.codeblock.ed .codetitle { display: inline-block; }
+.codeblock.ed .codelabel { display: none; }
+.codecopy { opacity: 0; }
+.codeblock:hover .codecopy, .codecopy:focus-visible { opacity: 1; }
+
+/* token colours */
+.hljs-title.function_, .hljs-function .hljs-title { color: #2563eb; }
+.hljs-variable, .hljs-property { color: var(--text); }
+.hljs-addition { color: #1f9254; } .hljs-deletion { color: #d92d20; }
+.hljs-meta, .hljs-attribute { color: #b7791f; } .hljs-symbol, .hljs-bullet { color: #0f8b8d; }
+:root[data-theme="dark"] .hljs-keyword, :root[data-theme="dark"] .hljs-literal { color: #d19cf0; }
+:root[data-theme="dark"] .hljs-string { color: #7fd6a2; }
+:root[data-theme="dark"] .hljs-title, :root[data-theme="dark"] .hljs-name { color: #7da7f7; }
+:root[data-theme="dark"] .hljs-number, :root[data-theme="dark"] .hljs-built_in, :root[data-theme="dark"] .hljs-type { color: #f0b86a; }
+@media print { .codecopy, .cb-tool, .codelang { display: none !important; } .codeblock.collapsed { height: auto; } .codeblock.collapsed pre { display: block; } }
+
+/* ProseMirror forces white-space: normal on contenteditable=false nodes */
+.codeblock .codegutter { white-space: pre !important; }
+.codeblock .codelabel { white-space: nowrap !important; }
+.codeblock.ed .codebar { padding-left: 10px; }
+
+.codeblock.collapsed .codebar { border-bottom: 0; }
+.codelabel { cursor: pointer; }
+.cb-chev { font-size: 14px; }

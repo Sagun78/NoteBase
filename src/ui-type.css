@@ -1,0 +1,31 @@
+/* App chrome typography = the Settings dialog's look: Inter, medium weight, slightly tight tracking,
+   and a clearly bolder weight for the selected item. Page content keeps its own reading typography. */
+:root { --ui-w: 500; --ui-strong: 650; --ui-track: -0.008em; }
+
+body, button, input, select, textarea { letter-spacing: var(--ui-track); }
+.doc, .doc * { letter-spacing: -0.006em; }
+#title { letter-spacing: -0.035em; }
+
+/* sidebar */
+.sidebar { font-size: 14px; }
+.sidebar .item, .sidebar .item .label, .page-item, .ws-btn { font-weight: var(--ui-w); transition: background .12s ease, color .12s ease; }
+.sidebar .item .ico { color: var(--text-3); transition: color .12s ease; }
+.sidebar .nav .item .ico, .sidebar .item.active .ico { color: var(--text); }
+.sidebar .item:hover { color: var(--text); }
+.sidebar .item.active, .sidebar .item.active .label { font-weight: var(--ui-strong); color: var(--text); }
+.sidebar .colhead { font-weight: 560; }
+.sidebar .colhead .label { font-weight: 560; }
+.page-item.active .caret { color: var(--text); }
+.sect { font-weight: 650; }
+.badge { font-weight: 650; }
+
+/* top bar, menus, lists, buttons */
+.crumbs, .crumbs a, .crumb-col { font-weight: var(--ui-w); }
+.btn, .top-actions .btn, .seg button { font-weight: var(--ui-w); }
+.ctx button, .slash-item, .res, .card-row, .toolbar .tsel { font-weight: var(--ui-w); }
+.ctx button:hover { color: var(--text); }
+.toc a { font-weight: var(--ui-w); color: var(--text-2); }
+.toc a:hover { color: var(--text); }
+.toc a.active { font-weight: var(--ui-strong); color: var(--text); }
+.card-title { font-weight: var(--ui-strong); }
+.res b, .slash-item b { font-weight: var(--ui-strong); }

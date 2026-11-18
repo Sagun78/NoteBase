@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+
+# build output (regenerate with `npm run build` / `npm run dist`)
+dist/
+release/
+*.log
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code local settings and scratch files
+.claude/
+scripts/_*.cjs
+patch-*.cjs
+
+# temporary files written while saving notes
+*.nbtmp

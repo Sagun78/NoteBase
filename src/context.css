@@ -1,0 +1,45 @@
+/* ---------- right-click menus ---------- */
+.ctx { min-width: 230px; max-width: 320px; padding: 6px; z-index: 120; box-shadow: 0 14px 40px rgba(15, 20, 40, .22), 0 0 0 1px var(--border); border: 0; }
+.ctx.sub { z-index: 121; min-width: 190px; }
+.ctx button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
+.ctx button:disabled { opacity: .4; cursor: default; }
+.ctx button:disabled:hover { background: transparent; }
+.mchk { width: 14px; flex: none; color: var(--accent); font-size: 12px; text-align: center; }
+.mlabel { flex: 1; }
+.mhint { color: var(--text-3); font-size: 12px; margin-left: 18px; }
+.marrow { color: var(--text-3); font-size: 15px; margin-left: 10px; }
+
+/* ---------- images ---------- */
+.imgfig { margin: 1em 0; display: flex; flex-direction: column; position: relative; }
+.imgfig[data-align="left"] { align-items: flex-start; }
+.imgfig[data-align="center"] { align-items: center; }
+.imgfig[data-align="right"] { align-items: flex-end; }
+.imgfig[data-align="full"] { align-items: stretch; }
+.imgframe { position: relative; max-width: 100%; line-height: 0; }
+.imgframe img { display: block; width: 100%; height: auto; border-radius: 8px; }
+.imgfig:not([style*="width"]) .imgframe:not([style*="width"]) { width: auto; }
+.imgfig figcaption { margin-top: 8px; font-size: 13.5px; color: var(--text-2); text-align: center; line-height: 1.4; max-width: 100%; }
+body.editing .imgfig:hover .imgframe img, .imgfig.sel .imgframe img { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+.imgfig.sel .imgframe img { outline-color: var(--accent); }
+body:not(.editing) .imgframe img { cursor: zoom-in; }
+.imgh { display: none; position: absolute; top: 50%; width: 10px; height: 44px; margin-top: -22px; border-radius: 6px; background: var(--accent); border: 2px solid var(--bg); cursor: ew-resize; z-index: 3; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); }
+.imgh-l { left: -7px; } .imgh-r { right: -7px; }
+body.editing .imgfig:hover .imgh, body.editing .imgfig.sel .imgh, .imgfig.resizing .imgh { display: block; }
+.imgbadge { display: none; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 3px 9px; border-radius: 6px; background: rgba(15, 20, 40, .82); color: #fff; font: 600 12px var(--font); line-height: 1.3; pointer-events: none; z-index: 4; }
+.imgfig.resizing .imgbadge { display: block; }
+.imgfig[data-align="full"] .imgh { display: none !important; }
+
+.imgbar { position: fixed; z-index: 55; display: flex; align-items: center; gap: 2px; padding: 4px; background: var(--bg); border-radius: 10px; box-shadow: 0 8px 28px rgba(15, 20, 40, .2), 0 0 0 1px var(--border); }
+.imgbar button { min-width: 30px; height: 30px; padding: 0 7px; border-radius: 7px; color: var(--text); font: 500 13px var(--font); display: inline-flex; align-items: center; justify-content: center; }
+.imgbar button:hover { background: var(--bg-hover); }
+.imgbar button.on { background: var(--bg-active); color: var(--accent); }
+.imgbar select { height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--text); font: 500 13px var(--font); cursor: pointer; padding: 0 4px; }
+.imgbar select:hover { background: var(--bg-hover); }
+.imgbar .isep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.imgbar .idim { font: 500 12px var(--font); color: var(--text-3); padding: 0 6px; min-width: 62px; text-align: center; }
+
+.lightbox { position: fixed; inset: 0; z-index: 300; background: rgba(8, 10, 18, .88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px; animation: fade .15s ease-out; cursor: zoom-out; }
+.lightbox img { max-width: 94vw; max-height: 84vh; border-radius: 8px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); background: #fff; cursor: default; }
+.lb-cap { color: #e8eaee; font-size: 14px; }
+.lb-x { position: absolute; top: 18px; right: 22px; width: 36px; height: 36px; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, .12); font-size: 16px; }
+.lb-x:hover { background: rgba(255, 255, 255, .22); }

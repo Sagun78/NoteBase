@@ -1,0 +1,42 @@
+/* ---------- Resizable panes ---------- */
+#app { position: relative; }
+.sidebar { width: 264px; flex: none; }
+.drawer { width: var(--drawer-w, 320px); }
+.toc { width: var(--toc-w, 210px); }
+.page { width: var(--page-w, 780px); max-width: 100%; flex: 0 1 var(--page-w, 780px); position: relative; }
+.docwrap { max-width: 100%; width: fit-content; margin: 0 auto; }
+body.wide .docwrap { width: 100%; }
+body.wide .page { width: auto; flex: 1 1 auto; max-width: none; }
+body.wide .rs-page { display: none; }
+
+.resizer { position: absolute; z-index: 30; width: 11px; cursor: col-resize; touch-action: none; }
+.resizer::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 3px; border-radius: 2px; background: transparent; transition: background .15s .08s; }
+.resizer:hover::after, .resizer.active::after { background: var(--accent); }
+.rs-side { top: 0; bottom: 0; left: calc(var(--side-w, 264px) - 5px); }
+.rs-drawer { top: 0; bottom: 0; right: calc(var(--drawer-w, 320px) - 5px); }
+.drawer[hidden] ~ .rs-drawer { display: none; }
+.rs-toc { top: 0; bottom: 0; right: -27px; }
+.rs-page { top: 0; bottom: 0; right: -27px; display: none; }
+.docwrap:hover .rs-page { display: block; }
+.rs-page::after { background: var(--border); opacity: 0; }
+.docwrap:hover .rs-page::after { opacity: 1; }
+.rs-page:hover::after, .rs-page.active::after { background: var(--accent); opacity: 1; }
+.toc[hidden] .rs-toc { display: none; }
+body.resizing { cursor: col-resize !important; user-select: none !important; }
+body.resizing * { cursor: col-resize !important; }
+body.resizing iframe, body.resizing .embed { pointer-events: none; }
+
+/* sidebar hide / show */
+.ws { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.ws-btn { flex: 1; min-width: 0; width: auto; }
+.collapse-side { width: 30px; height: 30px; flex: none; color: var(--text-3); opacity: 0; transition: opacity .15s; }
+.sidebar:hover .collapse-side { opacity: 1; }
+.expand-side { display: none; position: absolute; left: 12px; top: 14px; z-index: 40; color: var(--text-2); }
+body.side-collapsed .sidebar, body.side-collapsed .rs-side { display: none; }
+body.side-collapsed .expand-side { display: grid; }
+body.side-collapsed .topbar { padding-left: 56px; }
+@media (max-width: 800px) { .sidebar { width: 220px; } }
+
+/* Desktop app: fill the whole window (no centred max-width frame, no side margins) */
+body.desktop { background: var(--bg); }
+body.desktop #app { max-width: none; width: 100%; margin: 0; box-shadow: none; }

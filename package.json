@@ -1,0 +1,110 @@
+{
+  "name": "notebase",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173",
+    "icons": "node scripts/make-icons.mjs",
+    "desktop": "npm run build && electron .",
+    "dist": "npm run build && npm run icons && electron-builder --win nsis msi",
+    "dist:exe": "npm run build && npm run icons && electron-builder --win nsis",
+    "dist:msi": "npm run build && npm run icons && electron-builder --win msi"
+  },
+  "devDependencies": {
+    "electron": "^45.3.4",
+    "electron-builder": "^26.18.0",
+    "playwright-core": "^1.65.1",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.5",
+    "vite": "^8.3.8",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/source-serif-4": "^5.3.1",
+    "@fontsource/ia-writer-mono": "^5.3.0",
+    "@tiptap/core": "^3.34.0",
+    "@tiptap/extension-bubble-menu": "^3.34.0",
+    "@tiptap/extension-code-block-lowlight": "^3.34.0",
+    "@tiptap/extension-heading": "^3.34.0",
+    "@tiptap/extension-highlight": "^3.34.0",
+    "@tiptap/extension-image": "^3.34.0",
+    "@tiptap/extension-paragraph": "^3.34.0",
+    "@tiptap/extension-placeholder": "^3.34.0",
+    "@tiptap/extension-subscript": "^3.34.0",
+    "@tiptap/extension-superscript": "^3.34.0",
+    "@tiptap/extension-table": "^3.34.0",
+    "@tiptap/extension-task-item": "^3.34.0",
+    "@tiptap/extension-task-list": "^3.34.0",
+    "@tiptap/extension-text-align": "^3.34.0",
+    "@tiptap/extension-text-style": "^3.34.0",
+    "@tiptap/markdown": "^3.34.0",
+    "@tiptap/pm": "^3.34.0",
+    "@tiptap/starter-kit": "^3.34.0",
+    "@tiptap/suggestion": "^3.34.0",
+    "fflate": "^0.8.3",
+    "katex": "^0.19.1",
+    "lowlight": "^3.3.0",
+    "mermaid": "^12.3.0"
+  },
+  "description": "NoteBase - a private knowledge base that lives in a folder of Markdown files.",
+  "author": "NoteBase",
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "com.notebase.app",
+    "productName": "NoteBase",
+    "copyright": "NoteBase",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "msi",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "NoteBase-${version}-Setup.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "NoteBase",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    },
+    "msi": {
+      "oneClick": false,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NoteBase",
+      "additionalLightArgs": [
+        "-sval"
+      ]
+    }
+  }
+}
