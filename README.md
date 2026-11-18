@@ -7,6 +7,15 @@ Runs as a Windows desktop app or in Chrome / Edge. No account, no server, no clo
 
 <p align="center"><img src="docs/screenshots/overview.png" alt="NoteBase showing a page with a contents panel, callout, table and code block" width="900"></p>
 
+## Download
+
+Get the Windows installer from the **[Releases page](https://github.com/Sagun78/NoteBase/releases/latest)**:
+
+- `NoteBase-<version>-Setup.exe` — normal installer (per user, no admin needed)
+- `NoteBase-<version>-Setup.msi` — the same app as an MSI, for managed deployment
+
+The installers are not code-signed, so Windows SmartScreen may warn the first time: choose **More info**, then **Run anyway**. On first launch pick your notes folder; it is remembered after that.
+
 ## Based on Outline
 
 NoteBase is modelled on **[Outline](https://github.com/outline/outline)**, the open-source team knowledge base ([getoutline.com](https://www.getoutline.com/) · [docs](https://docs.getoutline.com/)). It takes Outline's layout and ideas (collections, nested pages, a contents panel, a block editor with a slash menu, page links and backlinks) and turns them into a single-user, local-first app.
@@ -35,9 +44,9 @@ NoteBase is modelled on **[Outline](https://github.com/outline/outline)**, the o
 - **Right-click menus** for text, links, images, tables and code, plus spelling suggestions in the desktop app.
 - **Import and export** Markdown files or whole folders.
 
-## Install (Windows)
+## Build the installers yourself
 
-Run `npm run dist` once. It writes two installers to `release/`:
+Releases are built automatically: pushing a tag such as `v1.0.1` runs `.github/workflows/release.yml`, which builds the installers on GitHub and attaches them to a Release. To build locally instead, run `npm run dist`. It writes two installers to `release/`:
 
 - `NoteBase-1.0.0-Setup.exe` — normal installer (per user, no admin needed, Start Menu and desktop shortcuts)
 - `NoteBase-1.0.0-Setup.msi` — the same app as an MSI, for managed deployment
@@ -65,6 +74,10 @@ Start **NoteBase** from the Start Menu or the desktop shortcut and choose your n
 | `node scripts/smoke-desktop.cjs <notesDir> <userDataDir>` | Launch the desktop app against empty folders and check saving and reopening |
 
 Adding `?opfs` to the browser URL uses a private in-browser folder, which is handy for trying the app without picking a folder.
+
+## License
+
+NoteBase is released under the [MIT License](LICENSE). Outline and the other projects listed below keep their own licences.
 
 ## Built with
 
