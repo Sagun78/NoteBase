@@ -6,6 +6,7 @@
 //   <root>/assets/<name>           pasted / uploaded images
 
 import * as native from './nativefs.js';
+import { convertFile, isSupported, stripExt } from './importers.js';
 
 export const isDesktop = native.available;
 export const supported = native.available || (typeof window !== 'undefined' && 'showDirectoryPicker' in window);
@@ -239,14 +240,14 @@ export function savePage(p) {
 }
 export const isDirty = (id) => dirty.has(id);
 
-export function newPage({ title = '', body = '', collectionId, parentId = null }) {
+export function newPage({ title = '', body = '', collectionId, parentId = null, icon = null }) {
   const now = new Date().toISOString();
   const sibs = children(collectionId, parentId);
   const p = {
     id: rid(), title, body, collectionId, parentId,
     order: sibs.length ? Math.max(...sibs.map((s) => s.order)) + 1 : 0,
     starred: false, createdAt: now, updatedAt: now, deletedAt: null,
-    icon: null, template: false, draft: false, archivedAt: null, view: null,
+    icon, template: false, draft: false, archivedAt: null, view: null,
   };
   data.pages.set(p.id, p);
   savePage(p);
@@ -469,11 +470,19 @@ export async function exportTree(dest, collectionIds) {
   }
 }
 
-/** Import a folder of .md files; sub-folders become nested pages. Returns number of pages created. */
-export async function importTree(src, collectionId) {
-  let count = 0;
-  const importAsset = async (stack, rel) => {
-    let dirs = [...stack];
+/* Imports go through src/importers.js (Markdown, Word, PDF, HTML, CSV, email, TextPack, text).
+   Both entry points return { count, failed: [{ name, error }], skipped: [names] } so the UI can report problems clearly. */
+const convertCtx = (extra = {}) => ({ saveAsset, ...extra });
+async function importOne(file, ctx, { collectionId, parentId }) {
+  const r = await convertFile(file, ctx);
+  return newPage({ title: r.title, body: r.body, icon: r.icon, collectionId, parentId });
+}
+
+/** Import a folder of supported files; sub-folders become nested pages. */
+export async function importTree(src, collectionId, onProgress) {
+  const result = { count: 0, failed: [], skipped: [] };
+  const findAsset = (stack) => async (rel) => {
+    const dirs = [...stack];
     const parts = rel.split('/');
     try {
       for (const part of parts.slice(0, -1)) { if (part === '..') dirs.pop(); else if (part !== '.') dirs.push(await dirs[dirs.length - 1].getDirectoryHandle(part)); }
@@ -481,47 +490,53 @@ export async function importTree(src, collectionId) {
       return await saveAsset(f);
     } catch { return null; }
   };
-  const fixImages = async (body, stack) => {
-    for (const m of [...body.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)]) {
-      if (/^(https?:|data:|assets\/)/.test(m[1])) continue;
-      const np = await importAsset(stack, decodeURIComponent(m[1]));
-      if (np) body = body.split(m[1]).join(np);
-    }
-    return body;
-  };
-  const walk = async (dir, stack, parentId) => {
+  const walk = async (dir, stack, parentId, prefix) => {
     const files = [], dirs = [];
     for await (const [name, h] of dir.entries()) {
-      if (h.kind === 'file' && /\.(md|markdown)$/i.test(name)) files.push([name, h]);
-      else if (h.kind === 'directory' && !name.startsWith('.')) dirs.push([name, h]);
+      if (name.startsWith('.') || name.startsWith('~$')) continue;
+      if (h.kind === 'directory') dirs.push([name, h]);
+      else if (isSupported(name)) files.push([name, h]);
+      else if (!IGNORED_ASSET.test(name)) result.skipped.push(prefix + name);
     }
     files.sort((a, b) => a[0].localeCompare(b[0]));
     const made = new Map();
     for (const [name, h] of files) {
-      const f = await h.getFile();
-      const p = pageFromFile(name, await f.text(), f.lastModified);
-      const page = newPage({ title: p.title, body: await fixImages(p.body, stack), collectionId, parentId });
-      made.set(name.replace(/\.(md|markdown)$/i, '').toLowerCase(), page.id);
-      count++;
+      onProgress?.(prefix + name);
+      try {
+        const page = await importOne(await h.getFile(), convertCtx({ resolveRelative: findAsset(stack) }), { collectionId, parentId });
+        made.set(stripExt(name).toLowerCase(), page.id);
+        result.count++;
+      } catch (e) { result.failed.push({ name: prefix + name, error: e?.message || String(e) }); }
     }
     for (const [name, h] of dirs) {
+      if (name.toLowerCase() === 'assets' || name.toLowerCase() === 'images' || name.toLowerCase() === 'attachments') {
+        // image folders are pulled in by reference; only create a page if they hold importable documents
+        let has = false; for await (const [n] of h.entries()) if (isSupported(n)) { has = true; break; }
+        if (!has) continue;
+      }
       let pid = made.get(name.toLowerCase());
-      if (!pid) { pid = newPage({ title: name, collectionId, parentId }).id; count++; }
-      await walk(h, [...stack, h], pid);
+      if (!pid) { pid = newPage({ title: name, collectionId, parentId }).id; result.count++; }
+      await walk(h, [...stack, h], pid, prefix + name + '/');
     }
   };
-  await walk(src, [src], null);
-  return count;
+  await walk(src, [src], null, '');
+  return result;
 }
-export async function importFiles(files, collectionId) {
-  let count = 0;
+/** Import files chosen in a file picker or dropped; also handles a folder picked with <input webkitdirectory>. */
+export async function importFiles(files, collectionId, onProgress) {
+  const result = { count: 0, failed: [], skipped: [] };
+  // Images chosen together with the documents (e.g. page.html + its pictures) are matched by file name.
+  const siblings = new Map(files.map((f) => [f.name.toLowerCase(), f]));
+  const resolveRelative = async (rel) => { const f = siblings.get(rel.split('/').pop().toLowerCase()); return f ? saveAsset(f).catch(() => null) : null; };
   for (const f of files) {
-    const p = pageFromFile(f.name, await f.text(), f.lastModified);
-    newPage({ title: p.title, body: p.body, collectionId });
-    count++;
+    const rel = f.webkitRelativePath || f.name;
+    if (!isSupported(f.name)) { if (!IGNORED_ASSET.test(f.name)) result.skipped.push(rel); continue; }
+    onProgress?.(rel);
+    try { await importOne(f, convertCtx({ resolveRelative }), { collectionId, parentId: null }); result.count++; } catch (e) { result.failed.push({ name: rel, error: e?.message || String(e) }); }
   }
-  return count;
+  return result;
 }
+const IGNORED_ASSET = /.(png|jpe?g|gif|webp|svg|bmp|ico|json|ds_store|css|js)$/i;
 export async function backupZip() {
   const { zipSync, strToU8 } = await import('fflate');
   const files = {};

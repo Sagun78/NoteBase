@@ -17,6 +17,7 @@ import { createEditor, setMarkdown, attachBubble, attachImageToolbar } from './e
 import { mountToolbar } from './toolbar.js';
 import { prefs, applyPrefs } from './prefs.js';
 import { openSettings } from './settings.js';
+import { FORMATS } from './importers.js';
 import { NodeSelection } from '@tiptap/pm/state';
 import { CellSelection } from '@tiptap/pm/tables';
 import { imageActions, selectedImage } from './image.js';
@@ -58,11 +59,12 @@ const ago = (iso) => {
 const colOf = (id) => data.collections.find((c) => c.id === id);
 const live = () => [...data.pages.values()].filter((p) => !p.deletedAt && !p.template && !p.archivedAt);
 const titleOf = (p) => p.title.trim() || 'Untitled';
-function toast(msg) {
+function toast(msg, ms = 2600) {
   const t = $('#toast');
   t.textContent = msg; t.hidden = false;
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => { t.hidden = true; }, 2600);
+  toast.t = setTimeout(() => { t.hidden = true; }, ms);
+  return t;
 }
 function applyTheme() {
   setTimeout(applyPrefs, 0);
@@ -382,7 +384,7 @@ function collectionMenu(c, x, y) {
     { label: 'Move up', onClick: () => moveCol(c, -1) },
     { label: 'Move down', onClick: () => moveCol(c, 1) },
     { label: 'Export collection to folder…', onClick: () => exportFlow([c.id]) },
-    { label: 'Import Markdown into collection…', onClick: () => importFlow(c.id) },
+    { label: 'Import documents into collection…', onClick: () => importFlow(c.id) },
     '-',
     { label: 'Delete collection', danger: true, onClick: () => deleteCollection(c) },
   ]);
@@ -424,30 +426,53 @@ async function exportFlow(ids) {
     toast('Exported to “' + dest.name + '”');
   } catch (e) { if (e.name !== 'AbortError') toast('Export failed: ' + e.message); }
 }
-async function importFlow(colId) {
-  const m = modal(`<h3>Import Markdown</h3><p class="muted">Folders become nested pages. Images next to the files are copied in.</p>
-    <div class="row"><button class="btn" data-a="files">Choose .md files…</button><button class="btn" data-a="dir">Choose a folder…</button></div>`);
-  m.el.addEventListener('click', async (e) => {
-    const a = e.target.dataset.a;
-    if (!a) return;
+async function importFlow(colId, droppedFiles) {
+  const fmts = FORMATS.map((f) => `<li><b>${esc(f.name)}</b> <span class="muted">${f.ext.map((e) => '.' + e).join(' ')}</span></li>`).join('');
+  const m = modal(`<h3>Import documents</h3>
+    <p class="muted">Bring in Word, PDF, Markdown, HTML and more. Formatting, tables, links and images are kept where possible. Folders become nested pages.</p>
+    <div class="dropzone" id="impDrop" tabindex="0">Drop files here, or choose them below</div>
+    <div class="row"><button class="btn primary" data-a="files">Choose files…</button><button class="btn" data-a="dir">Choose a folder…</button></div>
+    <details class="muted" style="margin-top:10px"><summary>Supported formats</summary><ul style="margin:6px 0 0 18px;padding:0">${fmts}</ul></details>`);
+  const run = async (kind, files) => {
     m.close();
+    const prog = toast('Importing…', 600000);
+    const hideProgress = () => { clearTimeout(toast.t); prog.hidden = true; };
     try {
       let target = colId || (current && colOf(current.collectionId)?.id) || data.collections[0].id;
-      let n = 0;
-      if (a === 'dir') {
+      const onProgress = (name) => { if (prog) prog.textContent = 'Importing ' + name + '…'; };
+      let res;
+      if (kind === 'dir') {
         const src = await store.pickDirectory({ id: 'notes-import', title: 'Choose the folder to import' });
         if (!colId) {
           const c = { id: store.rid(), name: src.name, color: COLORS[data.collections.length % COLORS.length] };
           data.collections.push(c); store.saveCollections(); target = c.id;
         }
-        n = await store.importTree(src, target);
+        res = await store.importTree(src, target, onProgress);
       } else {
-        const files = await new Promise((res) => { const i = $('#mdInput'); i.value = ''; i.onchange = () => res([...i.files]); i.oncancel = () => res([]); i.click(); });
-        n = await store.importFiles(files, target);
+        if (!files) files = await new Promise((res2) => { const i = $('#mdInput'); i.value = ''; i.onchange = () => res2([...i.files]); i.oncancel = () => res2([]); i.click(); });
+        if (!files.length) { hideProgress(); return; }
+        res = await store.importFiles(files, target, onProgress);
       }
-      renderSidebar(); toast(`Imported ${n} page(s)`);
-    } catch (err) { if (err.name !== 'AbortError') toast('Import failed: ' + err.message); }
-  });
+      hideProgress();
+      renderSidebar(); importReport(res);
+    } catch (err) { hideProgress(); if (err.name !== 'AbortError') toast('Import failed: ' + err.message); }
+  };
+  m.el.addEventListener('click', (e) => { const a = e.target.dataset.a; if (a) run(a); });
+  const dz = $('#impDrop', m.el);
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', (e) => { e.preventDefault(); dz.classList.remove('over'); const f = [...e.dataTransfer.files]; if (f.length) run('files', f); });
+  if (droppedFiles?.length) run('files', droppedFiles);
+}
+function importReport(res) {
+  const { count, failed, skipped } = res;
+  if (!failed.length && !skipped.length) { toast(count ? `Imported ${count} page${count === 1 ? '' : 's'}` : 'Nothing to import'); return; }
+  const list = (arr, fn) => arr.length ? `<ul style="margin:4px 0 10px 18px;padding:0;max-height:160px;overflow:auto">${arr.map(fn).join('')}</ul>` : '';
+  const m = modal(`<h3>${count ? `Imported ${count} page${count === 1 ? '' : 's'}` : 'Nothing was imported'}</h3>
+    ${failed.length ? `<p><b>${failed.length} file${failed.length === 1 ? '' : 's'} could not be imported</b></p>${list(failed, (f) => `<li>${esc(f.name)} — <span class="muted">${esc(f.error)}</span></li>`)}` : ''}
+    ${skipped.length ? `<p><b>${skipped.length} unsupported file${skipped.length === 1 ? '' : 's'} skipped</b></p>${list(skipped, (n) => `<li>${esc(n)}</li>`)}` : ''}
+    <div class="row end"><button class="btn primary" data-a="x">OK</button></div>`);
+  m.el.addEventListener('click', (e) => { if (e.target.dataset.a === 'x') m.close(); });
 }
 async function changeFolder() {
   flush();
